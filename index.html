@@ -44,7 +44,7 @@
 
         const callGeminiAPI = async (prompt, systemInstruction, schema, retries = 5) => {
             // Thay đổi URL gọi API đến Backend Vercel của chính bạn
-            const url = `/api/gemini`;
+            const url = `/api/gemini.js`;
             
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
