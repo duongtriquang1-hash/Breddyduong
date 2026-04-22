@@ -1,60 +1,63 @@
-// api/gemini.js
+/**
+ * Vercel Serverless Function: API Handler for Gemini
+ * File: api/gemini.js
+ */
 
-module.exports = async function handler(req, res) {
-  // 1. Cấu hình CORS (Cross-Origin Resource Sharing)
-  // Cho phép frontend ở các domain khác có thể gọi được API này
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', 'https://breddyduong.vercel.app/'); // Trong thực tế, bạn nên thay '*' bằng domain frontend của bạn (VD: 'https://my-app.com')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-
-  // 2. Xử lý preflight request (Trình duyệt tự động gửi OPTIONS trước khi POST)
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  // 3. Chỉ cho phép gọi bằng method POST
+export default async function handler(req, res) {
+  // Chỉ cho phép phương thức POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed. Vui lòng sử dụng POST request.' });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  try {
-    // 4. Lấy câu hỏi (prompt) từ Frontend gửi lên
-    const { prompt } = req.body;
+  // QUAN TRỌNG: Để apiKey là chuỗi rỗng. Hệ thống sẽ tự động cung cấp key khi thực thi.
+  const apiKey = "AIzaSyBf-0c8PfYqU3Nz2aJ0kasjfVdIB4KGJ2M";
+  
+  // QUAN TRỌNG: Sử dụng chính xác model này để chạy trong môi trường preview.
+  const model = "gemini-2.5-flash-preview-09-2025";
+  
+  // Cú pháp ${model} và ${apiKey} là để truyền giá trị biến vào URL. Đừng thay đổi phần này.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${gemini-2.5-flash-preview-09-2025}:generateContent?key=${AIzaSyBf-0c8PfYqU3Nz2aJ0kasjfVdIB4KGJ2M}`;
 
-    if (!prompt) {
-      return res.status(400).json({ error: 'Thiếu trường "prompt" trong dữ liệu gửi lên.' });
+  const maxRetries = 5;
+  const backoffDelays = [1000, 2000, 4000, 8000, 16000];
+
+  let lastError = null;
+
+  // Triển khai logic gọi API với Exponential Backoff (thử lại khi lỗi)
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(req.body)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Trả về dữ liệu thành công cho Frontend
+      return res.status(200).json(data);
+
+    } catch (error) {
+      lastError = error;
+      
+      // Nếu chưa hết lượt thử, đợi rồi thử lại
+      if (i < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, backoffDelays[i]));
+      }
     }
-
-    // 5. Lấy API Key từ biến môi trường (Environment Variables) của Vercel
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Chưa cấu hình biến môi trường GEMINI_API_KEY trên Vercel.' });
-    }
-
-    // 6. Gọi sang API của Google Gemini
-    // Sử dụng model gemini-2.5-flash (model tiêu chuẩn và nhanh nhất hiện tại)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${AIzaSyAHhittTt3xwIkyVriNFWL4iGfHww-OBnM}`;
-
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
-
-    const data = await response.json();
-
-    // 7. Trả kết quả từ Gemini về lại cho Frontend
-    return res.status(200).json(data);
-
-  } catch (error) {
-    console.error('Lỗi khi gọi API Gemini:', error);
-    return res.status(500).json({ error: 'Đã xảy ra lỗi phía Server.' });
   }
-};
+
+  // Nếu tất cả các lượt thử đều thất bại
+  console.error("Gemini API Error after retries:", lastError);
+  return res.status(500).json({ 
+    error: "Không thể kết nối với AI sau nhiều lần thử. Vui lòng thử lại sau.",
+    details: lastError.message 
+  });
+}
