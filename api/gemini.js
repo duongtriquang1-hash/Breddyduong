@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   const model = "gemini-2.5-flash-preview-09-2025";
   
   // Cú pháp ${model} và ${apiKey} là để truyền giá trị biến vào URL. Đừng thay đổi phần này.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${gemini-2.5-flash-preview-09-2025}:generateContent?key=${AIzaSyBf-0c8PfYqU3Nz2aJ0kasjfVdIB4KGJ2M}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${gemini-2.5-flash-preview-09-2025}:generateContent?key=${AIzaSyBMEirjgTP8n7symGzcFaY2b8tMVLUjB6U}`;
 
   const maxRetries = 5;
   const backoffDelays = [1000, 2000, 4000, 8000, 16000];
